@@ -11,6 +11,9 @@ local beautiful = require("beautiful")
 local naughty = require("naughty")
 local menubar = require("menubar")
 
+
+
+
 -- This is used later as the default terminal and editor to run.
 terminal = "urxvt"
 fileManager = "pcmanfm"
@@ -20,6 +23,7 @@ logoutCmd = "oblogout"
 editor = os.getenv("EDITOR") or "vim"
 editor_cmd = terminal .. " -e " .. editor
 themePath = "/home/lexaux/work/lexaux-linux-configs/awesome/theme-default/theme.lua"
+
 
 -- {{{ Error handling
 -- Check if awesome encountered an error during startup and fell back to
@@ -61,6 +65,49 @@ beautiful.init(themePath)
 -- I suggest you to remap Mod4 to another key using xmodmap or other tools.
 -- However, you can use another modifier like Mod1, but it may interact with others.
 modkey = "Mod4"
+
+-- OWN WIDGET - colourful battery
+
+function getIsCharging(acpistring) 
+ local isDischarging = string.match(acpistring, "Discharging");
+ if isDischarging then 
+   return false
+ else 
+   return true
+ end
+end
+
+
+function getAcpiData(acpistring)
+  local acpiDataTable = {}
+  local percentage = tonumber(string.match(acpistring, "(%d+)%%"))
+  local isCharging = getIsCharging(acpistring)
+  local background = "black"
+  local timeLeft = "Time Left" 
+
+  if isCharging then
+	background = "silver"
+  else
+	if percentage > 50 then 
+ 		background = "yellowgreen"
+	else 
+		if percentage > 25 then
+			background = "yellow"
+		else 
+			background = "orangered"
+		end
+	end
+	
+  end
+  
+  acpiDataTable["isCharging"] = isCharging;
+  acpiDataTable["percentage"] = percentage;
+  acpiDataTable["background"] = background;
+  acpiDataTable["timeLeft"] = timeLeft;
+ 
+  return acpiDataTable; 
+end
+
 
 -- Table of layouts to cover with awful.layout.inc, order matters.
 local layouts =
@@ -110,6 +157,22 @@ mytaglist.buttons = awful.util.table.join(awful.button({}, 1, awful.tag.viewonly
     awful.button({ modkey }, 3, awful.client.toggletag),
     awful.button({}, 4, function(t) awful.tag.viewnext(awful.tag.getscreen(t)) end),
     awful.button({}, 5, function(t) awful.tag.viewprev(awful.tag.getscreen(t)) end))
+
+batterywidget = wibox.widget.textbox()    
+batterywidget:set_text(" BAT ")    
+batterywidgettimer = timer({ timeout = 5 })    
+batterywidgettimer:connect_signal("timeout",    
+ function()    
+  fh = assert(io.popen("acpi", "r"))    
+  local acpistring = fh:read("*l") 
+  local acpiData = getAcpiData(acpistring)
+  local bgcolor = acpiData["background"] 
+  batterywidget:set_markup('  <span color="black" background="'.. bgcolor ..'">   ' .. acpiData["percentage"].. '%   </span>  ')    
+  fh:close()    
+ end    
+)    
+batterywidgettimer:start()
+
 mytasklist = {}
 mytasklist.buttons = awful.util.table.join(awful.button({}, 1, function(c)
 ---
@@ -174,6 +237,7 @@ for s = 1, screen.count() do
     local right_layout = wibox.layout.fixed.horizontal()
     if s == 1 then right_layout:add(wibox.widget.systray()) end
     right_layout:add(mytextclock)
+    right_layout:add(batterywidget)
     right_layout:add(mylayoutbox[s])
 
     -- Now bring it all together (with the tasklist in the middle)
@@ -228,6 +292,15 @@ globalkeys = awful.util.table.join(awful.key({ modkey, }, "Left", awful.tag.view
             awful.client.focus.history.previous()
             if client.focus then
                 client.focus:raise()
+            end
+        end),
+
+    -- Restore all minimized programs 
+    awful.key({ modkey, "Shift"   }, "n", 
+        function()
+            local tag = awful.tag.selected()
+                for i=1, #tag:clients() do
+                    tag:clients()[i].minimized=false
             end
         end),
 

@@ -6,6 +6,8 @@ URxvt.font: xft:Dina:pixelsize=14
 URxvt*background:              #222222
 URxvt*foreground:              #babdb6
 URxvt*color0:                  #2e3436
+
+
 URxvt*color1:                  #cc0000
 URxvt*color2:                  #4e9a06
 URxvt*color3:                  #c4a000
